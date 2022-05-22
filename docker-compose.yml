@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:13-alpine
+    command: ["postgres", "-c", "fsync=false", "-c", "full_page_writes=off"]
+    environment:
+      POSTGRES_USER: time-tracker
+      POSTGRES_PASSWORD: aspoweiqwoepwi14sd34
+    volumes:
+      - ./tmp/db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  front:
+    image: x3enos/time-tracker-front:temp1
+    container_name: front
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app
+    env_file:
+      - .front-env
+  app:
+    image: x3enos/time-tracker:temp1
+    container_name: app
+    command: "rails s -p 3001 -b 0.0.0.0"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+  cron:
+    build:
+      context: ./cron
+      dockerfile: cron.Dockerfile
+    container_name: cron
+    command: 'crond -l 2 -f'
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+  nginx:
+    image: nginx:1.15-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+      - front
+    volumes:
+      - ./data/nginx:/etc/nginx/conf.d
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
