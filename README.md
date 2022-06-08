@@ -8,6 +8,7 @@ For launching this on another instance you should:
 - Updated env variables in `.env` and `.front-env`
 - Create the certificates with the `./init-letsencrypt.sh`
 - Launch `docker-compose up -d`
+- For backups please add `0 0 * * * docker run --env-file ./.env --network=#{network} x3enos/ruby_backup:temp1` to crontab 
 
 Do not forget to create and populate(optionaly in case you have the dump) DB.
 
